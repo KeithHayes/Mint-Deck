@@ -1,5 +1,10 @@
 # Mint-Deck
+
 Elgato Stream Deck Software For Linux.
+
+I have articles about this software on my website.  https://chasingthesquirrel.com/
+
+The software functions, Mint Deck is a work in progress, but I always leave Mint Deck in a working state.
 
 # Directory Tree Structure
 

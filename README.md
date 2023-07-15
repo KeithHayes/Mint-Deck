@@ -8,7 +8,6 @@ Elgato Stream Deck Software For Linux.
 ├── doxyfile
 ├── libdecklibrary.a
 ├── makefile
-├── mintdeck
 |
 ├── data
 │   ├── default.bin

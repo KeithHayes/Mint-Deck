@@ -6,10 +6,29 @@ GtkWidget* MintDeck::vbox = nullptr;
 GtkWidget* MintDeck::hbox = nullptr;
 decklibrary::deck MintDeck::device;
 GtkTextBuffer* MintDeck::text_buffer;
+int MintDeck::animationindex = 0;
+GtkWidget* MintDeck::animationwidget = nullptr;;
+std::vector<std::vector<unsigned char>> MintDeck::animation;
+gboolean  MintDeck::stoptimer = true;
 
 MintDeck::MintDeck() {
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     windowInit(window);
+    const int numImages = 12;
+    std::vector<std::vector<unsigned char>> images;
+    std::string cassettePath = "data/cassette.bin";
+    std::ifstream cassette(cassettePath, std::ios::binary);
+    for (int i = 0; i < numImages; ++i) {
+        std::streampos imageSize;
+        cassette.read(reinterpret_cast<char*>(&imageSize), sizeof(imageSize));
+        std::vector<unsigned char> image(imageSize);
+        if (cassette.read(reinterpret_cast<char*>(image.data()), imageSize)) {
+            images.push_back(image);
+        }
+    }
+    cassette.close();
+    animationindex = 0;
+    animation = images;
 }
 void MintDeck::drawtiles() {
     int counter = 0;
@@ -132,30 +151,66 @@ void MintDeck::savebuttonsetas() {
 void MintDeck::deletebuttonset() {
     textdialog1("Name to Delete", 300, "Delete", decklibrary::keyfiles::deletebuttonset);
 }
-void MintDeck::recordkeystring(int btn) {
-    GtkDialog *dialog = GTK_DIALOG(gtk_dialog_new());
-    gtk_window_set_title(GTK_WINDOW(dialog), "Close to End");
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 350, 165);
-    gtk_container_set_border_width(GTK_CONTAINER(dialog), 10);
-    GtkWidget *contentArea = gtk_dialog_get_content_area(dialog);
-    GtkWidget *label = gtk_label_new("\n\nEnter Keys \nClose to Finish");
-    gtk_label_set_justify(GTK_LABEL(label), GTK_JUSTIFY_CENTER);
-    gtk_container_add(GTK_CONTAINER(contentArea), label);
-    gtk_widget_add_events(GTK_WIDGET(dialog), GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK);
-    g_signal_connect(dialog, "key-press-event", G_CALLBACK(decklibrary::deck::onKeyPress), GINT_TO_POINTER(btn));
-    g_signal_connect(dialog, "key-release-event", G_CALLBACK(decklibrary::deck::onKeyRelease), GINT_TO_POINTER(btn));
-    g_signal_connect(dialog, "response", G_CALLBACK(decklibrary::deck::savekeystring), NULL);
-    gtk_widget_show_all(GTK_WIDGET(dialog));
-    gtk_dialog_run(dialog);
+
+
+gboolean MintDeck::ondrawcallbacktimer(gpointer data) {
+    animationindex = (animationindex + 1) % 12;
+    if (animationwidget && GTK_IS_WIDGET(animationwidget)) {
+        gtk_widget_queue_draw(animationwidget);
+    }
+    if(!stoptimer) return G_SOURCE_CONTINUE; // Keep the timer running
+    else return G_SOURCE_REMOVE; // Stop the timer
 }
+gboolean MintDeck::ondraw(GtkWidget *widget, cairo_t *cr, gpointer data) {
+    std::vector<unsigned char>& image = animation[animationindex];
+    GdkPixbufLoader* loader = gdk_pixbuf_loader_new();
+    gdk_pixbuf_loader_write(loader, reinterpret_cast<const guint8*>(image.data()), image.size(), nullptr);
+    GdkPixbuf* pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
+    gdk_pixbuf_loader_close(loader, nullptr);
+    gdk_cairo_set_source_pixbuf(cr, pixbuf, 0, 0);
+    cairo_paint(cr);
+    g_object_unref(pixbuf);
+    return FALSE;
+}
+void MintDeck::recordkeystring(int btn) {
+    if (animationwidget && GTK_IS_WIDGET(animationwidget)) {
+        gtk_widget_destroy(animationwidget);
+        animationwidget = nullptr;
+    }
+    animationindex = 0;
+    GtkDialog *savedialog = GTK_DIALOG(gtk_dialog_new());
+    animationwidget = GTK_WIDGET(savedialog);
+    gtk_window_set_title(GTK_WINDOW(savedialog), "Close to End");
+    gtk_window_set_default_size(GTK_WINDOW(savedialog), 300, 186);
+    gtk_container_set_border_width(GTK_CONTAINER(savedialog), 10);
+    GtkWidget *drawingArea = gtk_drawing_area_new();
+    gtk_widget_set_size_request(drawingArea, 300, 186);
+    GtkWidget *contentArea = gtk_dialog_get_content_area(savedialog);
+    gtk_container_add(GTK_CONTAINER(contentArea), drawingArea);
+    g_signal_connect(drawingArea, "draw", G_CALLBACK(ondraw), nullptr);
+    gtk_widget_add_events(GTK_WIDGET(savedialog), GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK);
+    g_signal_connect(savedialog, "key-press-event", G_CALLBACK(decklibrary::deck::onKeyPress), GINT_TO_POINTER(btn));
+    g_signal_connect(savedialog, "key-release-event", G_CALLBACK(decklibrary::deck::onKeyRelease), GINT_TO_POINTER(btn));
+    g_signal_connect(savedialog, "response", G_CALLBACK(decklibrary::deck::savekeystring), NULL);
+    stoptimer = false;
+    g_timeout_add(41, ondrawcallbacktimer, nullptr);
+    gtk_widget_show_all(GTK_WIDGET(savedialog));
+    gtk_dialog_run(savedialog);
+}
+
+
 void MintDeck::editkeystring(int btn) {
+    if (animationwidget && GTK_IS_WIDGET(animationwidget)) {
+        gtk_widget_destroy(animationwidget);
+        animationwidget = nullptr;
+    }
     std::string keystring = decklibrary::deck::getbuttonkeys(btn);
-    GtkDialog* dialog = GTK_DIALOG(gtk_dialog_new());
-    gtk_window_set_title(GTK_WINDOW(dialog), ("Button " + std::to_string(btn+1)).c_str());
-    gtk_window_set_default_size(GTK_WINDOW(dialog), 350, 165);
-    g_signal_connect(dialog, "delete-event", G_CALLBACK(decklibrary::deck::setkeystring), GINT_TO_POINTER(btn));
+    GtkDialog* editdialog = GTK_DIALOG(gtk_dialog_new());
+    gtk_window_set_title(GTK_WINDOW(editdialog), ("Button " + std::to_string(btn+1)).c_str());
+    gtk_window_set_default_size(GTK_WINDOW(editdialog), 350, 165);
+    g_signal_connect(editdialog, "delete-event", G_CALLBACK(decklibrary::deck::setkeystring), GINT_TO_POINTER(btn));
     GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(dialog)), vbox);
+    gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(editdialog)), vbox);
     GtkWidget* scrolled_window = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_box_pack_start(GTK_BOX(vbox), scrolled_window, TRUE, TRUE, 0);
     GtkWidget* text_view = gtk_text_view_new();
@@ -173,8 +228,8 @@ void MintDeck::editkeystring(int btn) {
     gtk_container_add(GTK_CONTAINER(scrolled_window), text_view);
     gtk_widget_set_vexpand(scrolled_window, TRUE);
     gtk_widget_set_hexpand(scrolled_window, TRUE);
-    gtk_widget_show_all(GTK_WIDGET(dialog));
-    gtk_dialog_run(dialog);
+    gtk_widget_show_all(GTK_WIDGET(editdialog));
+    gtk_dialog_run(editdialog);
 }
 void MintDeck::loadbuttonimage(int btn) {
     GtkWidget* dialog = gtk_file_chooser_dialog_new("Open File", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);

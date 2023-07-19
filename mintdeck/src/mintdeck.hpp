@@ -25,6 +25,7 @@ namespace decklibrary {
 class MintDeck {
 public:
     MintDeck();
+    static gboolean stoptimer;
     static void drawtiles();
     static void savebuttonsetas();
     static void deletebuttonset();
@@ -40,11 +41,16 @@ private:
     static GtkWidget* vbox;
     static GtkWidget* hbox;
     static GtkTextBuffer* text_buffer;
+    static int animationindex;
+    static GtkWidget* animationwidget;
+    static std::vector<std::vector<unsigned char>> animation;
     static decklibrary::deck device;
     static void windowInit(GtkWidget* window);
     static void deckMenu();
     static void onBrightnessActivated(gpointer data);
     void setDeckBrightness();
+    static gboolean ondrawcallbacktimer(gpointer data);
+    static gboolean ondraw(GtkWidget *widget, cairo_t *cr, gpointer data);
     static void textdialog1(std::string dialogname, int width, std::string buttonname, void (*callbackfunction)(GtkWidget*, GtkWidget*));
     static void textdialog2(std::string dialogname, int width, std::string buttonname1, std::string buttonname2, void (*callbackfunction)(GtkWidget*, GtkWidget*));
     static void setevemumode();

@@ -105,7 +105,7 @@ namespace decklibrary
   std::vector<std::string> keyfiles::getbuttonsets(){
     std::vector<std::string> list;
     for (const auto& str : keysetnames) {
-        if (str != "default") { list.push_back(str); }
+        if ((str != "cassette")&&(str != "default")) { list.push_back(str); }
     }
     return list;
   }
@@ -606,6 +606,7 @@ namespace decklibrary
   }
 
   void deck::savekeystring(GtkWidget* widget) {
+    MintDeck::stoptimer = true;
     buttons[btnpressed].kstrokes = keystring;
     std::vector<keymap> elements = parsestring(keystring);
     buttons[btnpressed].kaction = groupCollector(elements);

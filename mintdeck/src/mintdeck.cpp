@@ -16,7 +16,7 @@ MintDeck::MintDeck() {
     windowInit(window);
     const int numImages = 12;
     std::vector<std::vector<unsigned char>> images;
-    std::string cassettePath = "data/cassette.bin";
+    std::string cassettePath = "data/ec72df53f5.bin";
     std::ifstream cassette(cassettePath, std::ios::binary);
     for (int i = 0; i < numImages; ++i) {
         std::streampos imageSize;

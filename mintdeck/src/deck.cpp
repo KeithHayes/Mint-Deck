@@ -105,7 +105,7 @@ namespace decklibrary
   std::vector<std::string> keyfiles::getbuttonsets(){
     std::vector<std::string> list;
     for (const auto& str : keysetnames) {
-        if ((str != "cassette")&&(str != "default")) { list.push_back(str); }
+        if ((str != "ec72df53f5")&&(str != "default")) { list.push_back(str); }
     }
     return list;
   }

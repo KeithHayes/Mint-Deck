@@ -14,7 +14,7 @@ gboolean  MintDeck::stoptimer = true;
 MintDeck::MintDeck() {
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     windowInit(window);
-    const int numImages = 12;
+    const int numImages = 216;
     std::vector<std::vector<unsigned char>> images;
     std::string cassettePath = "data/ec72df53f5.bin";
     std::ifstream cassette(cassettePath, std::ios::binary);
@@ -154,7 +154,7 @@ void MintDeck::deletebuttonset() {
 
 
 gboolean MintDeck::ondrawcallbacktimer(gpointer data) {
-    animationindex = (animationindex + 1) % 12;
+    animationindex = (animationindex + 1) % 216;
     if (animationwidget && GTK_IS_WIDGET(animationwidget)) {
         gtk_widget_queue_draw(animationwidget);
     }
